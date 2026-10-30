@@ -5,7 +5,7 @@ const API_BASE_URL = 'https://coopia-api.alwaysdata.net/api/v1'
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 20000,
+  timeout: 60000,
   headers: {
     'Content-Type': 'application/json',
   },
