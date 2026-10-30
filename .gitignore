@@ -26,3 +26,7 @@ dist-ssr
 dist-electron
 .env
 .env.*
+
+new-app.asar
+staging-asar/
+

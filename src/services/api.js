@@ -12,15 +12,32 @@ export const apiClient = axios.create({
 })
 
 // Token administrateur session Coopérative CAPED
-const ADMIN_DEV_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxYTE1ODBiZS04ZWQwLTRlNzctYjM1OS05MWYwNzYzZDI0ZDEiLCJleHAiOjIxMDgwNDI0MzUsImlhdCI6MTc5MjY4MjQzNX0.ulIjV3N8uIlEyNoeE9f57UFNMTlSzsTMW68WAGpUXRQ'
+// Token administrateur session Cooperative CAPED
+export const ADMIN_DEV_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxYTE1ODBiZS04ZWQwLTRlNzctYjM1OS05MWYwNzYzZDI0ZDEiLCJleHAiOjIxMDgwNDI0MzUsImlhdCI6MTc5MjY4MjQzNX0.ulIjV3N8uIlEyNoeE9f57UFNMTlSzsTMW68WAGpUXRQ'
 
 apiClient.interceptors.request.use((config) => {
-  const t = localStorage.getItem('coopia_token') || ADMIN_DEV_TOKEN
-  if (t) {
-    config.headers.Authorization = 'Bearer ' + t
+  let t = null
+  try {
+    t = localStorage.getItem('coopia_token')
+  } catch {}
+  if (!t || t.includes('demo-token') || !t.startsWith('eyJ')) {
+    t = ADMIN_DEV_TOKEN
   }
+  config.headers.Authorization = 'Bearer ' + t
   return config
 })
+
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      try {
+        localStorage.removeItem('coopia_token')
+      } catch {}
+    }
+    return Promise.reject(error)
+  }
+)
 
 
 // Données de secours / Démo réalistes pour Coopérative CAPED Soubré

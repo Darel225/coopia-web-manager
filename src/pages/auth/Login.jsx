@@ -2,7 +2,7 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Leaf, ShieldCheck, ArrowRight, Mail, Lock, Eye, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
-import { apiClient } from '../../services/api'
+import { apiClient, ADMIN_DEV_TOKEN } from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
 
 export default function Login() {
@@ -53,7 +53,7 @@ export default function Login() {
       } else {
         // En cas de coupure réseau ou hors-ligne, fallback fluide
         toast.warning('Mode local activé : Connexion réussie.')
-        login('demo-token-gerant-2026', {
+        login(ADMIN_DEV_TOKEN, {
           id: '1a1580be-8ed0-4e77-b359-91f0763d24d1',
           first_name: 'Awa',
           last_name: 'Koné',

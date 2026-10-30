@@ -74,7 +74,10 @@ function createWindow() {
   const indexPath = path.join(__dirname, '../dist/index.html');
 
   if (fs.existsSync(indexPath)) {
-    mainWindow.loadFile(indexPath);
+    mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
+    console.log('[Renderer Console]', message);
+  });
+  mainWindow.loadFile(indexPath);
   } else {
     // Mode développement : Si le bundle dist n'existe pas, charger le serveur local Vite
     mainWindow.loadURL('http://localhost:5173');
