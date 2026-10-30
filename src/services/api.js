@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const isDesktopEnv = typeof window !== 'undefined' && (Boolean(window.electronAPI) || window.location.protocol === 'file:');
-const API_BASE_URL = isDesktopEnv ? 'http://127.0.0.1:8000/api/v1' : '/api/v1'
+const API_BASE_URL = 'https://coopia-api.alwaysdata.net/api/v1'
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
