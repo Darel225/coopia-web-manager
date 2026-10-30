@@ -24,13 +24,10 @@ export default function PlantersManagement() {
   const fetchPlanters = async () => {
     setLoading(true)
     try {
-      await fetchRecoltes()
       const [data, churnRes] = await Promise.all([
         apiService.getPlanteurs(),
-        apiClient.get('/cooperative/predictions/churn').catch((err) => {
-          console.warn('Fallback Churn sur Planteurs:', err)
-          return null
-        }),
+        apiClient.get('/cooperative/predictions/churn').catch(() => null),
+        fetchRecoltes(),
       ])
       if (churnRes?.data) {
         setChurnData(churnRes.data)
@@ -639,3 +636,4 @@ export default function PlantersManagement() {
     </div>
   )
 }
+
