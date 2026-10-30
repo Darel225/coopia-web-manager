@@ -17,30 +17,29 @@ const DEFAULT_ADMIN_USER = {
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => {
     const saved = localStorage.getItem('coopia_token')
-    if (!saved || saved.includes('demo-token') || !saved.startsWith('eyJ')) {
-      localStorage.setItem('coopia_token', ADMIN_DEV_TOKEN)
-      return ADMIN_DEV_TOKEN
+    if (saved && saved.startsWith('eyJ') && !saved.includes('demo-token')) {
+      return saved
     }
-    return saved
+    return null
   })
 
   const [user, setUser] = useState(() => {
     const saved = localStorage.getItem('coopia_user')
     try {
-      if (saved) return JSON.parse(saved)
-    } catch {}
-    localStorage.setItem('coopia_user', JSON.stringify(DEFAULT_ADMIN_USER))
-    return DEFAULT_ADMIN_USER
+      return saved ? JSON.parse(saved) : null
+    } catch {
+      return null
+    }
   })
   const [loading, setLoading] = useState(true)
 
   // Synchronisation du header Authorization
   useEffect(() => {
-    let activeToken = token
-    if (!activeToken || activeToken.includes('demo-token') || !activeToken.startsWith('eyJ')) {
-      activeToken = ADMIN_DEV_TOKEN
+    if (token) {
+      apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`
+    } else {
+      delete apiClient.defaults.headers.common['Authorization']
     }
-    apiClient.defaults.headers.common['Authorization'] = `Bearer ${activeToken}`
     setLoading(false)
   }, [token])
 

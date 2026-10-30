@@ -167,6 +167,20 @@ export default function Login() {
               <span>{loading ? 'Connexion en cours...' : 'Se connecter au Tableau de Bord'}</span>
               <ArrowRight className="h-4 w-4" />
             </button>
+
+            {/* Aide rapide Démo Gérant */}
+            <div className="pt-1 text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('gerant@caped.ci')
+                  setPassword('CoopIA2026!')
+                }}
+                className="text-[11.5px] text-emerald-800 hover:text-emerald-950 bg-emerald-50/80 hover:bg-emerald-100/90 border border-emerald-200/80 px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer shadow-2xs"
+              >
+                Utiliser les identifiants Gérant CAPED (gerant@caped.ci)
+              </button>
+            </div>
           </form>
         </div>
 
