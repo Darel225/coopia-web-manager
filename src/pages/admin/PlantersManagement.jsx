@@ -41,9 +41,19 @@ export default function PlantersManagement() {
                 p.nom.toLowerCase().includes((item.nom_complet || '').toLowerCase())
             )
             if (apiMatch) {
+              const rawPhone = apiMatch.phone_number || p.phone
+              const cleanDigits = (rawPhone || '').replace(/\D/g, '')
+              let local = cleanDigits.startsWith('225') ? cleanDigits.slice(3) : cleanDigits
+              if (local.length === 9 && !local.startsWith('0')) local = '0' + local
+              const formattedPhone = local.length === 10
+                ? `+225 ${local.slice(0, 2)} ${local.slice(2, 4)} ${local.slice(4, 6)} ${local.slice(6, 8)} ${local.slice(8, 10)}`
+                : (rawPhone || p.phone)
+
               return {
                 ...p,
                 avatar: apiMatch.avatar_url || p.avatar,
+                phone: formattedPhone,
+                village: apiMatch.village || p.village,
                 superficie: apiMatch.total_superficie_ha > 0 ? apiMatch.total_superficie_ha : p.superficie,
                 superficieDetail: apiMatch.total_superficie_ha > 0 ? apiMatch.total_superficie_ha.toFixed(2).replace('.', ',') : p.superficieDetail,
                 parcellesCount: apiMatch.parcelles_count > 0 ? apiMatch.parcelles_count : p.parcellesCount,
@@ -73,11 +83,19 @@ export default function PlantersManagement() {
               const rendement = sup > 0 ? Math.round(kg / sup) : 0
               const seuil = isAnacarde ? 550 : isCafe ? 700 : 800
 
+              const rawApiPhone = apiItem.phone_number || '+225 00 00 00 00'
+              const cleanApiDigits = rawApiPhone.replace(/\D/g, '')
+              let localApi = cleanApiDigits.startsWith('225') ? cleanApiDigits.slice(3) : cleanApiDigits
+              if (localApi.length === 9 && !localApi.startsWith('0')) localApi = '0' + localApi
+              const formattedApiPhone = localApi.length === 10
+                ? `+225 ${localApi.slice(0, 2)} ${localApi.slice(2, 4)} ${localApi.slice(4, 6)} ${localApi.slice(6, 8)} ${localApi.slice(8, 10)}`
+                : rawApiPhone
+
               merged.push({
                 id: `PLT-${apiItem.id || Date.now()}`,
                 nom: apiItem.nom_complet,
                 avatar: apiItem.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-                phone: apiItem.phone_number || '+225 00 00 00 00',
+                phone: formattedApiPhone,
                 village: apiItem.village || 'Abobo',
                 crop,
                 cropLabel,
