@@ -9,7 +9,48 @@ import { Link } from 'react-router-dom'
 import { useRecoltesStore } from '../../store/recoltesStore'
 import { exportLocalReport, isElectronApp } from '../../utils/fileSystem'
 
+
+// Normalisation et comparaison ultra-robuste des sociétaires (Téléphone, ID, Nom)
+const cleanPhoneDigits = (phone) => {
+  if (!phone) return ''
+  const digits = String(phone).replace(/\D/g, '')
+  return digits.length >= 8 ? digits.slice(-8) : digits
+}
+
+const normalizeName = (name) => {
+  if (!name) return ''
+  return String(name)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
+}
+
+const isSamePlanter = (a, b) => {
+  if (!a || !b) return false
+  const idA = a.userId || a.id
+  const idB = b.userId || b.id
+  if (idA && idB && (idA === idB || String(idA).includes(String(idB)) || String(idB).includes(String(idA)))) {
+    return true
+  }
+  const phoneA = cleanPhoneDigits(a.phone || a.phone_number)
+  const phoneB = cleanPhoneDigits(b.phone || b.phone_number)
+  if (phoneA && phoneB && phoneA === phoneB) {
+    return true
+  }
+  const nameA = normalizeName(a.nom || a.nom_complet)
+  const nameB = normalizeName(b.nom || b.nom_complet)
+  if (nameA && nameB) {
+    if (nameA === nameB || nameA.includes(nameB) || nameB.includes(nameA)) return true
+    if (nameA.length >= 6 && nameB.length >= 6 && (nameA.startsWith(nameB.slice(0, 6)) || nameB.startsWith(nameA.slice(0, 6)))) {
+      return true
+    }
+  }
+  return false
+}
+
 export default function PlantersManagement() {
+
   const searchQuery = useRecoltesStore((state) => state.searchQuery)
   const bordereaux = useRecoltesStore((state) => state.bordereaux)
   const fetchRecoltes = useRecoltesStore((state) => state.fetchRecoltes)
@@ -32,14 +73,15 @@ export default function PlantersManagement() {
       if (churnRes?.data) {
         setChurnData(churnRes.data)
       }
-      if (Array.isArray(data) && data.length > 0) {
-        setPlanters((prev) => {
-          const merged = prev.map((p) => {
-            const apiMatch = data.find(
-              (item) =>
-                (item.nom_complet && item.nom_complet.toLowerCase().includes(p.nom.toLowerCase())) ||
-                p.nom.toLowerCase().includes((item.nom_complet || '').toLowerCase())
-            )
+            if (Array.isArray(data) && data.length > 0) {
+        setPlanters(() => {
+          // Base fraîche de départ : master list REAL_COOP_PLANTERS
+          const merged = REAL_COOP_PLANTERS.map((p) => ({ ...p }))
+
+          // 1. Mettre à jour chaque sociétaire existant avec les données API fraîches
+          for (let i = 0; i < merged.length; i++) {
+            const p = merged[i]
+            const apiMatch = data.find((item) => isSamePlanter(p, item))
             if (apiMatch) {
               const rawPhone = apiMatch.phone_number || p.phone
               const cleanDigits = (rawPhone || '').replace(/\D/g, '')
@@ -49,25 +91,31 @@ export default function PlantersManagement() {
                 ? `+225 ${local.slice(0, 2)} ${local.slice(2, 4)} ${local.slice(4, 6)} ${local.slice(6, 8)} ${local.slice(8, 10)}`
                 : (rawPhone || p.phone)
 
-              return {
+              const cropNorm = (apiMatch.culture || p.crop || 'cacao').toLowerCase()
+              const isAnacarde = cropNorm.includes('anacard')
+              const isCafe = cropNorm.includes('caf')
+              const crop = isAnacarde ? 'anacarde' : isCafe ? 'cafe' : 'cacao'
+              const cropLabel = isAnacarde ? 'Anacarde CCA' : isCafe ? 'Café Robusta' : 'Cacao CCC'
+
+              merged[i] = {
                 ...p,
+                userId: apiMatch.id || p.userId,
+                nom: apiMatch.nom_complet || p.nom,
                 avatar: apiMatch.avatar_url || p.avatar,
                 phone: formattedPhone,
                 village: apiMatch.village || p.village,
+                crop,
+                cropLabel,
                 superficie: apiMatch.total_superficie_ha > 0 ? apiMatch.total_superficie_ha : p.superficie,
                 superficieDetail: apiMatch.total_superficie_ha > 0 ? apiMatch.total_superficie_ha.toFixed(2).replace('.', ',') : p.superficieDetail,
                 parcellesCount: apiMatch.parcelles_count > 0 ? apiMatch.parcelles_count : p.parcellesCount,
               }
             }
-            return p
-          })
+          }
 
+          // 2. Ajouter les nouveaux sociétaires réels de l'API non encore référencés
           data.forEach((apiItem) => {
-            const exists = merged.some(
-              (p) =>
-                (apiItem.nom_complet && p.nom.toLowerCase().includes(apiItem.nom_complet.toLowerCase())) ||
-                (apiItem.nom_complet && apiItem.nom_complet.toLowerCase().includes(p.nom.toLowerCase()))
-            )
+            const exists = merged.some((p) => isSamePlanter(p, apiItem))
             if (!exists && apiItem.nom_complet) {
               const cropNorm = (apiItem.culture || 'cacao').toLowerCase()
               const isAnacarde = cropNorm.includes('anacard')
@@ -93,6 +141,7 @@ export default function PlantersManagement() {
 
               merged.push({
                 id: `PLT-${apiItem.id || Date.now()}`,
+                userId: apiItem.id,
                 nom: apiItem.nom_complet,
                 avatar: apiItem.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
                 phone: formattedApiPhone,
@@ -125,9 +174,20 @@ export default function PlantersManagement() {
             }
           })
 
-          return merged
+          // 3. Déduplication finale absolue garantie par numéro et userId
+          const seen = new Set()
+          const uniqueList = []
+          for (const item of merged) {
+            const key = cleanPhoneDigits(item.phone) || item.userId || item.id
+            if (!seen.has(key)) {
+              seen.add(key)
+              uniqueList.push(item)
+            }
+          }
+
+          return uniqueList
         })
-        console.log('✅ [PlantersManagement] Planteurs chargés et fusionnés depuis Neon DB:', data.length)
+        console.log('✅ [PlantersManagement] Planteurs chargés et fusionnés sans doublon depuis Neon DB:', data.length)
       }
     } catch (err) {
       console.warn('Fallback planteurs:', err)
@@ -146,14 +206,10 @@ export default function PlantersManagement() {
 
     return planters.map((p) => {
       // Synchronisation directe avec le modèle XGBoost Churn de l'onglet IA Prédiction
-      const churnMatch = churnList.find(
-        (cp) =>
-          (cp.nom_complet && cp.nom_complet.toLowerCase().includes(p.nom.toLowerCase())) ||
-          (p.nom && p.nom.toLowerCase().includes((cp.nom_complet || '').toLowerCase()))
-      )
-      const pNameNorm = p.nom.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      const churnMatch = churnList.find((cp) => isSamePlanter(p, cp))
+      const pNameNorm = normalizeName(p.nom)
       const relatedSlips = bordereaux.filter((b) => {
-        const bNameNorm = (b.planteur || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        const bNameNorm = normalizeName(b.planteur)
         return bNameNorm.includes(pNameNorm) || pNameNorm.includes(bNameNorm)
       })
 
